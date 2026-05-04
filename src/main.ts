@@ -45,9 +45,10 @@ const services: Service[] = [
     icon: "briefcase",
   },
   {
-    name: "Personal Cloud",
+    name: "Nube",
     description: "Nube personal para archivos y backups.",
-    status: "private",
+    url: "https://nube.camiska.lat/",
+    status: "public",
     icon: "cloud",
   },
   {
