@@ -9,6 +9,9 @@ type Session = {
   ip: string;
   createdAt: number;
   lastSeen: number;
+  source: "Hub" | "Nube" | "Diamilo";
+  user?: string;
+  role?: string;
 };
 
 type SecurityEvent = {
@@ -18,6 +21,8 @@ type SecurityEvent = {
   device: string;
   timestamp: number;
   detail?: string;
+  source: "Hub" | "Nube" | "Diamilo";
+  username?: string;
 };
 
 type SecurityData = {
@@ -128,11 +133,14 @@ async function loadSecurity() {
               <div>
                 <strong>${escapeHtml(session.device)}</strong>
                 ${session.current ? '<span class="current-badge">Este dispositivo</span>' : ""}
-                <p>${escapeHtml(session.ip)} · Último uso ${formatDate(session.lastSeen)}</p>
+                <span class="app-badge">${session.source}</span>
+                <p>${session.user ? `${escapeHtml(session.user)} · ` : ""}${escapeHtml(session.ip)} · Último uso ${formatDate(session.lastSeen)}</p>
               </div>
-              <button class="revoke-button" type="button" data-session-id="${escapeHtml(session.id)}">
-                ${session.current ? "Salir" : "Cerrar"}
-              </button>
+              ${session.source === "Hub" ? `
+                <button class="revoke-button" type="button" data-session-id="${escapeHtml(session.id)}">
+                  ${session.current ? "Salir" : "Cerrar"}
+                </button>
+              ` : ""}
             </article>
           `).join("")}
         </div>
@@ -146,7 +154,8 @@ async function loadSecurity() {
               <span class="event-dot" aria-hidden="true"></span>
               <div>
                 <strong>${eventLabels[event.result]}</strong>
-                <p>${escapeHtml(event.device)} · ${escapeHtml(event.ip)}</p>
+                <span class="app-badge">${event.source}</span>
+                <p>${event.username ? `${escapeHtml(event.username)} · ` : ""}${escapeHtml(event.device)} · ${escapeHtml(event.ip)}</p>
                 <time>${formatDate(event.timestamp)}</time>
               </div>
             </article>

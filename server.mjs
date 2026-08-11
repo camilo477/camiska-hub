@@ -29,6 +29,10 @@ const attemptWindowMs = 15 * 60 * 1000;
 const lockDurationMs = 15 * 60 * 1000;
 const maxAttempts = 5;
 const maxEvents = 200;
+const nubeSecurityUrl = process.env.NUBE_SECURITY_URL || "";
+const nubeSecurityToken = process.env.NUBE_SECURITY_TOKEN || "";
+const diamiloSecurityUrl = process.env.DIAMILO_SECURITY_URL || "";
+const diamiloSecurityToken = process.env.DIAMILO_SECURITY_TOKEN || "";
 
 mkdirSync(dataDir, { recursive: true });
 
@@ -314,6 +318,35 @@ function json(request, response, status, value) {
   });
 }
 
+async function fetchExternalSecurity(url, token, source) {
+  if (!url || !token) return { sessions: [], events: [] };
+
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) throw new Error(`Nube respondió ${response.status}`);
+    const data = await response.json();
+    return {
+      sessions: Array.isArray(data.sessions)
+        ? data.sessions.map((session) => ({
+            ...session,
+            id: `${source.toLowerCase()}:${session.id}`,
+            current: false,
+            source,
+          }))
+        : [],
+      events: Array.isArray(data.events)
+        ? data.events.map((event) => ({ ...event, id: `${source.toLowerCase()}:${event.id}`, source }))
+        : [],
+    };
+  } catch (error) {
+    console.error(`No se pudo consultar la seguridad de ${source}:`, error.message);
+    return { sessions: [], events: [] };
+  }
+}
+
 const server = createServer(async (request, response) => {
   try {
     const pathname = new URL(request.url, "http://localhost").pathname;
@@ -397,18 +430,28 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && pathname === "/api/security") {
+      const [nube, diamilo] = await Promise.all([
+        fetchExternalSecurity(nubeSecurityUrl, nubeSecurityToken, "Nube"),
+        fetchExternalSecurity(diamiloSecurityUrl, diamiloSecurityToken, "Diamilo"),
+      ]);
+      const hubSessions = auth.state.sessions.map((session) => ({
+        id: session.id,
+        current: session.id === auth.session.id,
+        device: session.device,
+        ip: session.ip,
+        createdAt: session.createdAt,
+        lastSeen: session.lastSeen,
+        source: "Hub",
+      }));
+      const hubEvents = auth.state.events
+        .slice(-30)
+        .map((event) => ({ ...event, source: "Hub" }));
       json(request, response, 200, {
-        sessions: auth.state.sessions
-          .map((session) => ({
-            id: session.id,
-            current: session.id === auth.session.id,
-            device: session.device,
-            ip: session.ip,
-            createdAt: session.createdAt,
-            lastSeen: session.lastSeen,
-          }))
+        sessions: [...hubSessions, ...nube.sessions, ...diamilo.sessions]
           .sort((left, right) => right.lastSeen - left.lastSeen),
-        events: auth.state.events.slice(-30).reverse(),
+        events: [...hubEvents, ...nube.events, ...diamilo.events]
+          .sort((left, right) => right.timestamp - left.timestamp)
+          .slice(0, 30),
       });
       return;
     }

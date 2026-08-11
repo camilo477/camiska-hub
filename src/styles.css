@@ -296,6 +296,19 @@ a {
   font-weight: 650;
 }
 
+.app-badge {
+  display: inline-block;
+  margin-left: 6px;
+  border: 1px solid #d5d5d1;
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: #666;
+  background: #ededeb;
+  font-size: 0.62rem;
+  font-weight: 650;
+  vertical-align: 1px;
+}
+
 .revoke-button {
   flex: 0 0 auto;
   min-height: 34px;

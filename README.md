@@ -29,6 +29,10 @@ Crea un archivo `.env`:
 ```env
 HUB_USER=camiska
 HUB_PASSWORD=una-contraseña-larga-y-unica
+NUBE_SECURITY_URL=https://nube.camiska.lat/api/internal/security
+NUBE_SECURITY_TOKEN=el-mismo-token-configurado-en-nube
+DIAMILO_SECURITY_URL=https://diamilo.camiska.lat/api/internal/security
+DIAMILO_SECURITY_TOKEN=el-mismo-token-configurado-en-diamilo
 ```
 
 Construye e inicia:
@@ -83,3 +87,9 @@ sudo docker run -d \
 ## Editar sitios
 
 Los accesos están en el array `services` de `src/main.ts`.
+
+## Mostrar sesiones de Nube
+
+Configura `CLOUD_SECURITY_TOKEN` en Nube y usa exactamente el mismo valor como `NUBE_SECURITY_TOKEN` en el Hub. `NUBE_SECURITY_URL` debe apuntar al endpoint `/api/internal/security` de Nube. El endpoint no acepta usuarios ni contraseñas, sólo el token interno.
+
+Para Diamilo configura `DIAMILO_SECURITY_TOKEN` en ambos contenedores y `DIAMILO_SECURITY_URL` en el Hub. Puede ser un token distinto al de Nube y es lo recomendado.
