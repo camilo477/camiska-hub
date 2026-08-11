@@ -29,6 +29,10 @@ button:disabled {
   opacity: 0.55;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 button {
   cursor: pointer;
 }
@@ -64,7 +68,18 @@ a {
   letter-spacing: -0.055em;
 }
 
-.logout {
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.header-actions form {
+  margin: 0;
+}
+
+.logout,
+.install-button {
   min-height: 42px;
   border: 1px solid #d2d2cf;
   border-radius: 999px;
@@ -73,7 +88,8 @@ a {
   transition: background 150ms ease, border-color 150ms ease;
 }
 
-.logout:hover {
+.logout:hover,
+.install-button:hover {
   border-color: #b8b8b4;
   background: #fff;
 }
@@ -104,7 +120,8 @@ a {
 }
 
 .site-card:focus-visible,
-.logout:focus-visible {
+.logout:focus-visible,
+.install-button:focus-visible {
   outline: 3px solid #171717;
   outline-offset: 3px;
 }

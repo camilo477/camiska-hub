@@ -132,6 +132,7 @@ const mimeTypes = {
   ".jpeg": "image/jpeg",
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".webp": "image/webp",
@@ -286,10 +287,11 @@ function serveFile(request, response) {
   }
 
   const extension = extname(filePath).toLowerCase();
+  const noCache = extension === ".html" || requestPath === "/sw.js" || requestPath === "/manifest.webmanifest";
   response.writeHead(200, {
     ...securityHeaders(request),
     "Content-Type": mimeTypes[extension] || "application/octet-stream",
-    "Cache-Control": extension === ".html" ? "no-cache" : "public, max-age=2592000, immutable",
+    "Cache-Control": noCache ? "no-cache" : "public, max-age=2592000, immutable",
   });
 
   if (request.method === "HEAD") response.end();
@@ -376,6 +378,14 @@ const server = createServer(async (request, response) => {
         writeState(auth.state);
       }
       redirect(request, response, "/", expiredCookie(request));
+      return;
+    }
+
+    const publicPwaFile = pathname === "/manifest.webmanifest"
+      || pathname === "/sw.js"
+      || pathname.startsWith("/icons/");
+    if ((request.method === "GET" || request.method === "HEAD") && publicPwaFile) {
+      serveFile(request, response);
       return;
     }
 

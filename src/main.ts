@@ -25,6 +25,11 @@ type SecurityData = {
   events: SecurityEvent[];
 };
 
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 type Service = {
   name: string;
   description: string;
@@ -182,9 +187,12 @@ document.querySelector<HTMLDivElement>("#root")!.innerHTML = `
         <h1>Mis sitios</h1>
       </div>
 
-      <form action="/logout" method="post">
-        <button class="logout" type="submit">Salir</button>
-      </form>
+      <div class="header-actions">
+        <button class="install-button" id="install-button" type="button" hidden>Instalar</button>
+        <form action="/logout" method="post">
+          <button class="logout" type="submit">Salir</button>
+        </form>
+      </div>
     </header>
 
     <section class="sites" aria-label="Mis sitios">
@@ -208,3 +216,31 @@ document.querySelector<HTMLDivElement>("#root")!.innerHTML = `
 
 document.querySelector<HTMLButtonElement>("#refresh-security")!.addEventListener("click", loadSecurity);
 void loadSecurity();
+
+let installPrompt: InstallPromptEvent | null = null;
+const installButton = document.querySelector<HTMLButtonElement>("#install-button")!;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  installPrompt = event as InstallPromptEvent;
+  installButton.hidden = false;
+});
+
+installButton.addEventListener("click", async () => {
+  if (!installPrompt) return;
+  await installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  installButton.hidden = true;
+});
+
+window.addEventListener("appinstalled", () => {
+  installPrompt = null;
+  installButton.hidden = true;
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  });
+}

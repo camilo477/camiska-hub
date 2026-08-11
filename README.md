@@ -2,6 +2,8 @@
 
 Página privada para abrir los sitios de `camiska.lat`.
 
+También funciona como PWA instalable en celular y escritorio. El manifiesto y los iconos son públicos, pero el service worker nunca almacena el login, el dashboard HTML, la API ni información de sesiones.
+
 ## Seguridad
 
 - Usuario y contraseña definidos únicamente mediante variables de Docker.
@@ -44,6 +46,8 @@ docker run -d \
 ```
 
 Abre `http://localhost:3000`.
+
+En el dominio HTTPS aparecerá el botón **Instalar** cuando el navegador soporte instalación directa. En iPhone/iPad usa **Compartir → Añadir a pantalla de inicio**.
 
 ## Bloqueos
 
