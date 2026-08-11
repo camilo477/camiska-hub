@@ -2,6 +2,29 @@ import "./styles.css";
 
 type IconName = "cloud" | "target" | "arrow";
 
+type Session = {
+  id: string;
+  current: boolean;
+  device: string;
+  ip: string;
+  createdAt: number;
+  lastSeen: number;
+};
+
+type SecurityEvent = {
+  id: string;
+  result: "success" | "failure" | "blocked" | "logout" | "revoked" | "unlock";
+  ip: string;
+  device: string;
+  timestamp: number;
+  detail?: string;
+};
+
+type SecurityData = {
+  sessions: Session[];
+  events: SecurityEvent[];
+};
+
 type Service = {
   name: string;
   description: string;
@@ -53,6 +76,104 @@ function serviceCard(service: Service) {
   `;
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]!);
+}
+
+function formatDate(value: number) {
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+const eventLabels: Record<SecurityEvent["result"], string> = {
+  success: "Acceso correcto",
+  failure: "Acceso fallido",
+  blocked: "Intento bloqueado",
+  logout: "Sesión cerrada",
+  revoked: "Sesión eliminada",
+  unlock: "Bloqueo eliminado",
+};
+
+async function loadSecurity() {
+  const container = document.querySelector<HTMLDivElement>("#security-content")!;
+
+  try {
+    const response = await fetch("/api/security", { credentials: "same-origin" });
+    if (response.status === 401 || response.redirected) {
+      window.location.href = "/";
+      return;
+    }
+    if (!response.ok) throw new Error("No se pudo cargar la actividad");
+
+    const data = await response.json() as SecurityData;
+    container.innerHTML = `
+      <div class="security-column">
+        <h3>Sesiones activas</h3>
+        <div class="session-list">
+          ${data.sessions.map((session) => `
+            <article class="session-item">
+              <div>
+                <strong>${escapeHtml(session.device)}</strong>
+                ${session.current ? '<span class="current-badge">Este dispositivo</span>' : ""}
+                <p>${escapeHtml(session.ip)} · Último uso ${formatDate(session.lastSeen)}</p>
+              </div>
+              <button class="revoke-button" type="button" data-session-id="${escapeHtml(session.id)}">
+                ${session.current ? "Salir" : "Cerrar"}
+              </button>
+            </article>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="security-column">
+        <h3>Actividad reciente</h3>
+        <div class="event-list">
+          ${data.events.length ? data.events.map((event) => `
+            <article class="event-item event-${event.result}">
+              <span class="event-dot" aria-hidden="true"></span>
+              <div>
+                <strong>${eventLabels[event.result]}</strong>
+                <p>${escapeHtml(event.device)} · ${escapeHtml(event.ip)}</p>
+                <time>${formatDate(event.timestamp)}</time>
+              </div>
+            </article>
+          `).join("") : '<p class="empty-state">Todavía no hay actividad.</p>'}
+        </div>
+      </div>
+    `;
+
+    container.querySelectorAll<HTMLButtonElement>(".revoke-button").forEach((button) => {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        const body = new URLSearchParams({ id: button.dataset.sessionId || "" });
+        const revokeResponse = await fetch("/api/sessions/revoke", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        });
+
+        if (revokeResponse.ok) {
+          if (button.textContent?.trim() === "Salir") window.location.href = "/";
+          else await loadSecurity();
+        } else {
+          button.disabled = false;
+        }
+      });
+    });
+  } catch {
+    container.innerHTML = '<p class="empty-state">No se pudo cargar la actividad.</p>';
+  }
+}
+
 document.querySelector<HTMLDivElement>("#root")!.innerHTML = `
   <main class="app-shell">
     <header class="header">
@@ -69,5 +190,21 @@ document.querySelector<HTMLDivElement>("#root")!.innerHTML = `
     <section class="sites" aria-label="Mis sitios">
       ${services.map(serviceCard).join("")}
     </section>
+
+    <section class="security" aria-labelledby="security-title">
+      <div class="section-title">
+        <div>
+          <p>Seguridad</p>
+          <h2 id="security-title">Dispositivos y accesos</h2>
+        </div>
+        <button class="refresh-button" id="refresh-security" type="button">Actualizar</button>
+      </div>
+      <div class="security-content" id="security-content">
+        <p class="empty-state">Cargando actividad…</p>
+      </div>
+    </section>
   </main>
 `;
+
+document.querySelector<HTMLButtonElement>("#refresh-security")!.addEventListener("click", loadSecurity);
+void loadSecurity();

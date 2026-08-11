@@ -11,11 +11,15 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    PORT=8080
 
-COPY server.mjs ./server.mjs
-COPY --from=build /app/dist ./dist
+RUN mkdir -p /app/data && chown node:node /app/data
+COPY --chown=node:node server.mjs ./server.mjs
+COPY --chown=node:node --from=build /app/dist ./dist
 
-EXPOSE 80
+USER node
+
+EXPOSE 8080
 
 CMD ["node", "server.mjs"]
